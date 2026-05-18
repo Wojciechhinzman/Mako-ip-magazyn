@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { downloadExcel } from "@/lib/excel";
 import { formatDate, formatNumber } from "@/lib/format";
+import { downloadIssueReport } from "@/lib/issueReport";
 import { supabase } from "@/lib/supabase";
 import { Employee, Item, Project, StockMovement } from "@/lib/types";
 
@@ -19,7 +20,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("stock_movements").select("*, employees(full_name), projects(name, code)").order("created_at", { ascending: false }),
+      supabase.from("stock_movements").select("*, employees(full_name), projects(name, code), issue_documents(document_number)").order("created_at", { ascending: false }),
       supabase.from("items").select("*").order("name"),
       supabase.from("employees").select("*").order("full_name"),
       supabase.from("projects").select("*").order("name")
@@ -73,6 +74,7 @@ export default function HistoryPage() {
                   Jednostka: movement.unit,
                   Osoba: movement.employees?.full_name || "",
                   Projekt: movement.projects ? `${movement.projects.code} - ${movement.projects.name}` : "",
+                  "Numer wydania": movement.issue_documents?.document_number || "",
                   Data: formatDate(movement.created_at),
                   Komentarz: movement.comment || ""
                 }))
@@ -128,8 +130,10 @@ export default function HistoryPage() {
                   <th>Ilość</th>
                   <th>Osoba</th>
                   <th>Projekt</th>
+                  <th>Numer wydania</th>
                   <th>Data</th>
                   <th>Komentarz</th>
+                  <th>Raport</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,8 +151,22 @@ export default function HistoryPage() {
                     </td>
                     <td>{movement.employees?.full_name}</td>
                     <td>{movement.projects ? `${movement.projects.code} - ${movement.projects.name}` : "-"}</td>
+                    <td>{movement.issue_documents?.document_number || "-"}</td>
                     <td>{formatDate(movement.created_at)}</td>
                     <td>{movement.comment || "-"}</td>
+                    <td>
+                      {movement.issue_document_id ? (
+                        <button
+                          className="btn-secondary min-h-10 px-3 py-2"
+                          onClick={() => downloadIssueReport(filtered.filter((row) => row.issue_document_id === movement.issue_document_id))}
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Raport
+                        </button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

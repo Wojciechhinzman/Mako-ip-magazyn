@@ -30,6 +30,7 @@ export type StockMovement = {
   item_id: string;
   employee_id: string;
   project_id: string | null;
+  issue_document_id?: string | null;
   item_name: string;
   size: string;
   material: string;
@@ -40,6 +41,18 @@ export type StockMovement = {
   items?: Item;
   employees?: Employee;
   projects?: Project | null;
+  issue_documents?: IssueDocument | null;
+};
+
+export type IssueDocument = {
+  id: string;
+  document_number: string;
+  employee_id: string;
+  project_id: string;
+  comment: string | null;
+  created_at: string;
+  employees?: Employee;
+  projects?: Project;
 };
 
 export type ToastState = {
