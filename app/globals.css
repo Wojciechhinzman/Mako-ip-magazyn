@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0b1017;
+  color: #e5edf5;
+}
+
+.app-background {
+  position: relative;
+  isolation: isolate;
+  background: #0b1017;
+}
+
+.app-background::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/mako-logo.svg");
+  background-position: right 3rem bottom 2.5rem;
+  background-repeat: no-repeat;
+  background-size: min(42vw, 520px) auto;
+  opacity: 0.18;
+}
+
+.app-background > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .app-background::before {
+    background-position: center bottom 2rem;
+    background-size: 78vw auto;
+    opacity: 0.12;
+  }
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-panel shadow-soft;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-line bg-field px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-brand/20;
+  }
+
+  .label {
+    @apply mb-2 block text-sm font-medium text-slate-300;
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-brand px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-teal-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-line bg-field px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .table-wrap {
+    @apply overflow-x-auto rounded-lg border border-line;
+  }
+
+  .table {
+    @apply min-w-full divide-y divide-line text-sm;
+  }
+
+  .table th {
+    @apply bg-field px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400;
+  }
+
+  .table td {
+    @apply border-t border-line px-4 py-3 text-slate-200;
+  }
+}

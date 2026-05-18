@@ -1,0 +1,36 @@
+{
+  "name": "MAKO-IP Magazyn",
+  "short_name": "MAKO Magazyn",
+  "description": "Aplikacja magazynowa MAKO-IP",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1017",
+  "theme_color": "#0b1017",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/mako-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Przyjęcie",
+      "short_name": "Przyjęcie",
+      "url": "/przyjecie"
+    },
+    {
+      "name": "Wydanie",
+      "short_name": "Wydanie",
+      "url": "/wydanie"
+    },
+    {
+      "name": "Stany magazynowe",
+      "short_name": "Stany",
+      "url": "/stany"
+    }
+  ]
+}

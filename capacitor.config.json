@@ -1,0 +1,9 @@
+{
+  "appId": "pl.makoip.magazyn",
+  "appName": "MAKO-IP Magazyn",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "android": {
+    "backgroundColor": "#0b1017"
+  }
+}

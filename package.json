@@ -1,0 +1,65 @@
+{
+  "name": "mako-ip-magazyn",
+  "version": "1.0.0",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "desktop": "next build && electron .",
+    "dist:win": "next build && electron-builder --win nsis",
+    "android:add": "cap add android",
+    "android:sync": "next build && cap sync android",
+    "android:open": "next build && cap sync android && cap open android",
+    "android:apk": "next build && cap sync android && cd android && gradlew assembleDebug",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "build": {
+    "appId": "pl.makoip.magazyn",
+    "productName": "MAKO-IP Magazyn",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MAKO-IP Magazyn"
+    }
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@supabase/supabase-js": "^2.44.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "next": "14.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.4",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.2"
+  }
+}
