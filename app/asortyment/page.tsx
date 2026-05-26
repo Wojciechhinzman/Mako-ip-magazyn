@@ -108,7 +108,7 @@ export default function AssortmentPage() {
     }
 
     setEditing(null);
-    setToast({ type: "success", message: "Asortyment zostal zaktualizowany." });
+    setToast({ type: "success", message: "Asortyment zostal zaktualizowany. Jezeli taka pozycja juz istniala, stany zostaly scalone." });
     await load();
   }
 
