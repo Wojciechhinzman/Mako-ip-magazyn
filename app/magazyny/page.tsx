@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Check, Pencil, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Toast } from "@/components/Toast";
@@ -11,6 +11,8 @@ import { ToastState, Warehouse } from "@/lib/types";
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [editingName, setEditingName] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
 
   async function load() {
@@ -48,6 +50,27 @@ export default function WarehousesPage() {
     if (!error) load();
   }
 
+  async function saveName(warehouse: Warehouse) {
+    const name = editingName.trim();
+    if (!name) {
+      setToast({ type: "error", message: "Nazwa magazynu jest wymagana." });
+      return;
+    }
+
+    const { error } = await supabase.from("warehouses").update({ name }).eq("id", warehouse.id);
+    setToast(error ? { type: "error", message: error.message } : { type: "success", message: "Nazwa magazynu została zmieniona." });
+    if (!error) {
+      setEditingId("");
+      setEditingName("");
+      load();
+    }
+  }
+
+  function startEdit(warehouse: Warehouse) {
+    setEditingId(warehouse.id);
+    setEditingName(warehouse.name);
+  }
+
   return (
     <>
       <PageHeader title="Magazyny" description="Lista magazynów. Tworzenie i zmiana statusu są dostępne tylko dla administratora." />
@@ -77,14 +100,39 @@ export default function WarehousesPage() {
               <tbody>
                 {warehouses.map((warehouse) => (
                   <tr key={warehouse.id}>
-                    <td className="font-semibold text-white">{warehouse.name}</td>
+                    <td className="font-semibold text-white">
+                      {editingId === warehouse.id ? (
+                        <input className="input min-w-64" value={editingName} onChange={(event) => setEditingName(event.target.value)} autoFocus />
+                      ) : (
+                        warehouse.name
+                      )}
+                    </td>
                     <td>
                       <StatusBadge active={warehouse.active} />
                     </td>
-                    <td>
-                      <button className="btn-secondary min-h-10 px-3 py-2" disabled={!isAdmin} onClick={() => toggle(warehouse)}>
-                        {warehouse.active ? "Dezaktywuj" : "Aktywuj"}
-                      </button>
+                    <td className="space-x-2">
+                      {editingId === warehouse.id ? (
+                        <>
+                          <button className="btn-primary min-h-10 px-3 py-2" onClick={() => saveName(warehouse)}>
+                            <Check className="h-4 w-4" />
+                            Zapisz
+                          </button>
+                          <button className="btn-secondary min-h-10 px-3 py-2" onClick={() => setEditingId("")}>
+                            <X className="h-4 w-4" />
+                            Anuluj
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="btn-secondary min-h-10 px-3 py-2" disabled={!isAdmin} onClick={() => startEdit(warehouse)}>
+                            <Pencil className="h-4 w-4" />
+                            Zmień nazwę
+                          </button>
+                          <button className="btn-secondary min-h-10 px-3 py-2" disabled={!isAdmin} onClick={() => toggle(warehouse)}>
+                            {warehouse.active ? "Dezaktywuj" : "Aktywuj"}
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -5,7 +5,7 @@ import { Loader2, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Toast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
-import { Employee, ToastState, Warehouse } from "@/lib/types";
+import { Employee, Item, ToastState, Warehouse } from "@/lib/types";
 
 type ReceiveLine = {
   id: string;
@@ -28,6 +28,7 @@ const newLine = (): ReceiveLine => ({
 export default function ReceivePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [lines, setLines] = useState<ReceiveLine[]>([newLine()]);
   const [toast, setToast] = useState<ToastState>(null);
   const [busy, setBusy] = useState(false);
@@ -35,10 +36,12 @@ export default function ReceivePage() {
   useEffect(() => {
     Promise.all([
       supabase.from("employees").select("*").eq("active", true).order("full_name"),
-      supabase.from("warehouses").select("*").eq("active", true).order("name")
-    ]).then(([employeeResult, warehouseResult]) => {
+      supabase.from("warehouses").select("*").eq("active", true).order("name"),
+      supabase.from("items").select("*").order("name")
+    ]).then(([employeeResult, warehouseResult, itemResult]) => {
       setEmployees(employeeResult.data || []);
       setWarehouses(warehouseResult.data || []);
+      setItems(itemResult.data || []);
     });
   }, []);
 
@@ -48,6 +51,15 @@ export default function ReceivePage() {
 
   function addLine() {
     setLines((current) => [...current, newLine()]);
+  }
+
+  function applySuggestion(lineId: string, item: Item) {
+    updateLine(lineId, {
+      name: item.name,
+      size: item.size,
+      material: item.material,
+      unit: item.unit
+    });
   }
 
   function removeLine(id: string) {
@@ -145,7 +157,7 @@ export default function ReceivePage() {
               {lines.map((line, index) => (
                 <div key={line.id} className="grid gap-3 rounded-lg border border-line bg-field p-3 xl:grid-cols-[48px_1.4fr_1fr_1fr_140px_120px_52px] xl:items-end">
                   <div className="hidden pb-3 text-center text-sm font-bold text-slate-400 xl:block">{index + 1}</div>
-                  <Input label="Nazwa artykułu" value={line.name} onChange={(value) => updateLine(line.id, { name: value })} required />
+                  <ArticleNameInput line={line} items={items} onChange={(value) => updateLine(line.id, { name: value })} onSelect={(item) => applySuggestion(line.id, item)} />
                   <Input label="Rozmiar" value={line.size} onChange={(value) => updateLine(line.id, { size: value })} required />
                   <Input label="Materiał" value={line.material} onChange={(value) => updateLine(line.id, { material: value })} required />
                   <Input label="Ilość" type="number" min="0.001" step="0.001" value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: value })} required />
@@ -197,6 +209,54 @@ function Input(props: { label: string; value: string; onChange: (value: string) 
     <div>
       <label className="label">{label}</label>
       <input className="input" value={value} onChange={(event) => onChange(event.target.value)} {...inputProps} />
+    </div>
+  );
+}
+
+function ArticleNameInput({ line, items, onChange, onSelect }: { line: ReceiveLine; items: Item[]; onChange: (value: string) => void; onSelect: (item: Item) => void }) {
+  const [open, setOpen] = useState(false);
+  const query = line.name.trim().toLowerCase();
+  const suggestions = query
+    ? items
+        .filter((item) => `${item.name} ${item.size} ${item.material}`.toLowerCase().includes(query))
+        .slice(0, 6)
+    : [];
+
+  return (
+    <div className="relative">
+      <label className="label">Nazwa artykułu</label>
+      <input
+        className="input"
+        value={line.name}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        required
+      />
+      {open && suggestions.length > 0 ? (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-md border border-line bg-panel shadow-soft">
+          {suggestions.map((item) => (
+            <button
+              key={item.id}
+              className="block w-full border-b border-line px-4 py-3 text-left text-sm text-slate-200 last:border-b-0 hover:bg-field"
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onSelect(item);
+                setOpen(false);
+              }}
+            >
+              <span className="block font-semibold text-white">{item.name}</span>
+              <span className="block text-xs text-slate-400">
+                {item.size} | {item.material} | {item.unit}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
