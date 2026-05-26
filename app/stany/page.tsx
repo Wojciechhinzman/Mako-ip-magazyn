@@ -10,7 +10,8 @@ import { supabase } from "@/lib/supabase";
 import { ItemStock, Warehouse } from "@/lib/types";
 
 type StockTotal = {
-  itemId: string;
+  key: string;
+  warehouseName?: string;
   name: string;
   size: string;
   material: string;
@@ -18,6 +19,15 @@ type StockTotal = {
   quantity: number;
   updatedAt: string;
 };
+
+function normalize(value: string | undefined) {
+  return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function stockKey(stock: ItemStock, includeWarehouse: boolean) {
+  const item = stock.items;
+  return [includeWarehouse ? stock.warehouse_id : "", normalize(item?.name), normalize(item?.size), normalize(item?.material), normalize(item?.unit)].join("|");
+}
 
 export default function StockPage() {
   const [stocks, setStocks] = useState<ItemStock[]>([]);
@@ -49,21 +59,24 @@ export default function StockPage() {
     });
   }, [stocks, search, warehouseFilter]);
 
-  const totals = useMemo(() => {
+  function groupStocks(source: ItemStock[], includeWarehouse: boolean) {
     const phrase = search.toLowerCase();
     const grouped = new Map<string, StockTotal>();
 
-    for (const stock of stocks) {
+    for (const stock of source) {
       const item = stock.items;
       if (!item || stock.quantity <= 0) continue;
 
-      const text = `${item.name} ${item.size} ${item.material}`.toLowerCase();
+      const text = `${item.name} ${item.size} ${item.material} ${stock.warehouses?.name || ""}`.toLowerCase();
       if (!text.includes(phrase)) continue;
 
-      const current = grouped.get(item.id);
+      const key = stockKey(stock, includeWarehouse);
+      const current = grouped.get(key);
+
       if (!current) {
-        grouped.set(item.id, {
-          itemId: item.id,
+        grouped.set(key, {
+          key,
+          warehouseName: stock.warehouses?.name,
           name: item.name,
           size: item.size,
           material: item.material,
@@ -77,18 +90,21 @@ export default function StockPage() {
       }
     }
 
-    return Array.from(grouped.values()).sort((a, b) => a.name.localeCompare(b.name, "pl"));
-  }, [stocks, search]);
+    return Array.from(grouped.values()).sort((a, b) => `${a.warehouseName || ""} ${a.name}`.localeCompare(`${b.warehouseName || ""} ${b.name}`, "pl"));
+  }
+
+  const totals = useMemo(() => groupStocks(stocks, false), [stocks, search]);
+  const warehouseRows = useMemo(() => groupStocks(filtered, true), [filtered, search]);
 
   const exportRows = warehouseFilter
-    ? filtered.map((stock) => ({
-        Magazyn: stock.warehouses?.name || "",
-        "Nazwa artykułu": stock.items?.name || "",
-        Rozmiar: stock.items?.size || "",
-        Materiał: stock.items?.material || "",
-        Jednostka: stock.items?.unit || "",
+    ? warehouseRows.map((stock) => ({
+        Magazyn: stock.warehouseName || "",
+        "Nazwa artykułu": stock.name,
+        Rozmiar: stock.size,
+        Materiał: stock.material,
+        Jednostka: stock.unit,
         "Ilość na stanie": stock.quantity,
-        "Ostatnia zmiana": formatDate(stock.updated_at)
+        "Ostatnia zmiana": formatDate(stock.updatedAt)
       }))
     : totals.map((total) => ({
         "Nazwa artykułu": total.name,
@@ -105,11 +121,7 @@ export default function StockPage() {
         title="Stany magazynowe"
         description="Suma stanów ze wszystkich magazynów oraz rozbicie na magazyny."
         actions={
-          <button
-            className="btn-secondary"
-            onClick={() => downloadExcel("stany-magazynowe.xls", warehouseFilter ? "Stany magazynu" : "Suma stanów", exportRows)}
-            disabled={exportRows.length === 0}
-          >
+          <button className="btn-secondary" onClick={() => downloadExcel("stany-magazynowe.xls", warehouseFilter ? "Stany magazynu" : "Suma stanów", exportRows)} disabled={exportRows.length === 0}>
             <Download className="h-5 w-5" />
             Eksport Excel
           </button>
@@ -149,7 +161,7 @@ export default function StockPage() {
                   </thead>
                   <tbody>
                     {totals.map((total) => (
-                      <tr key={total.itemId}>
+                      <tr key={total.key}>
                         <td className="font-semibold text-white">{total.name}</td>
                         <td>{total.size}</td>
                         <td>{total.material}</td>
@@ -168,7 +180,7 @@ export default function StockPage() {
 
       <div className="card p-5">
         <h2 className="mb-4 text-lg font-bold text-white">{warehouseFilter ? "Stany wybranego magazynu" : "Rozbicie na magazyny"}</h2>
-        {filtered.length === 0 ? (
+        {warehouseRows.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="table-wrap">
@@ -185,15 +197,15 @@ export default function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((stock) => (
-                  <tr key={`${stock.item_id}-${stock.warehouse_id}`}>
-                    <td className="font-semibold text-white">{stock.warehouses?.name}</td>
-                    <td>{stock.items?.name}</td>
-                    <td>{stock.items?.size}</td>
-                    <td>{stock.items?.material}</td>
-                    <td>{stock.items?.unit}</td>
+                {warehouseRows.map((stock) => (
+                  <tr key={stock.key}>
+                    <td className="font-semibold text-white">{stock.warehouseName}</td>
+                    <td>{stock.name}</td>
+                    <td>{stock.size}</td>
+                    <td>{stock.material}</td>
+                    <td>{stock.unit}</td>
                     <td className="font-bold text-brand">{formatNumber(stock.quantity)}</td>
-                    <td>{formatDate(stock.updated_at)}</td>
+                    <td>{formatDate(stock.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
