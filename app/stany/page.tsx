@@ -9,6 +9,16 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { ItemStock, Warehouse } from "@/lib/types";
 
+type StockTotal = {
+  itemId: string;
+  name: string;
+  size: string;
+  material: string;
+  unit: string;
+  quantity: number;
+  updatedAt: string;
+};
+
 export default function StockPage() {
   const [stocks, setStocks] = useState<ItemStock[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -39,37 +49,74 @@ export default function StockPage() {
     });
   }, [stocks, search, warehouseFilter]);
 
+  const totals = useMemo(() => {
+    const phrase = search.toLowerCase();
+    const grouped = new Map<string, StockTotal>();
+
+    for (const stock of stocks) {
+      const item = stock.items;
+      if (!item || stock.quantity <= 0) continue;
+
+      const text = `${item.name} ${item.size} ${item.material}`.toLowerCase();
+      if (!text.includes(phrase)) continue;
+
+      const current = grouped.get(item.id);
+      if (!current) {
+        grouped.set(item.id, {
+          itemId: item.id,
+          name: item.name,
+          size: item.size,
+          material: item.material,
+          unit: item.unit,
+          quantity: stock.quantity,
+          updatedAt: stock.updated_at
+        });
+      } else {
+        current.quantity += stock.quantity;
+        if (new Date(stock.updated_at) > new Date(current.updatedAt)) current.updatedAt = stock.updated_at;
+      }
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => a.name.localeCompare(b.name, "pl"));
+  }, [stocks, search]);
+
+  const exportRows = warehouseFilter
+    ? filtered.map((stock) => ({
+        Magazyn: stock.warehouses?.name || "",
+        "Nazwa artykułu": stock.items?.name || "",
+        Rozmiar: stock.items?.size || "",
+        Materiał: stock.items?.material || "",
+        Jednostka: stock.items?.unit || "",
+        "Ilość na stanie": stock.quantity,
+        "Ostatnia zmiana": formatDate(stock.updated_at)
+      }))
+    : totals.map((total) => ({
+        "Nazwa artykułu": total.name,
+        Rozmiar: total.size,
+        Materiał: total.material,
+        Jednostka: total.unit,
+        "Suma we wszystkich magazynach": total.quantity,
+        "Ostatnia zmiana": formatDate(total.updatedAt)
+      }));
+
   return (
     <>
       <PageHeader
         title="Stany magazynowe"
-        description="Aktualne ilości materiałów we wszystkich magazynach."
+        description="Suma stanów ze wszystkich magazynów oraz rozbicie na magazyny."
         actions={
           <button
             className="btn-secondary"
-            onClick={() =>
-              downloadExcel(
-                "stany-magazynowe.xls",
-                "Stany magazynowe",
-                filtered.map((stock) => ({
-                  Magazyn: stock.warehouses?.name || "",
-                  "Nazwa artykułu": stock.items?.name || "",
-                  Rozmiar: stock.items?.size || "",
-                  Materiał: stock.items?.material || "",
-                  Jednostka: stock.items?.unit || "",
-                  "Ilość na stanie": stock.quantity,
-                  "Ostatnia zmiana": formatDate(stock.updated_at)
-                }))
-              )
-            }
-            disabled={filtered.length === 0}
+            onClick={() => downloadExcel("stany-magazynowe.xls", warehouseFilter ? "Stany magazynu" : "Suma stanów", exportRows)}
+            disabled={exportRows.length === 0}
           >
             <Download className="h-5 w-5" />
             Eksport Excel
           </button>
         }
       />
-      <div className="card p-5">
+
+      <div className="card mb-6 p-5">
         <div className="mb-5 grid gap-3 md:grid-cols-[1fr_260px]">
           <input className="input" placeholder="Szukaj po nazwie, rozmiarze, materiale lub magazynie" value={search} onChange={(event) => setSearch(event.target.value)} />
           <select className="input" value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)}>
@@ -81,6 +128,46 @@ export default function StockPage() {
             ))}
           </select>
         </div>
+
+        {!warehouseFilter ? (
+          <>
+            <h2 className="mb-4 text-lg font-bold text-white">Suma stanów ze wszystkich magazynów</h2>
+            {totals.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Nazwa artykułu</th>
+                      <th>Rozmiar</th>
+                      <th>Materiał</th>
+                      <th>Jednostka</th>
+                      <th>Suma</th>
+                      <th>Ostatnia zmiana</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {totals.map((total) => (
+                      <tr key={total.itemId}>
+                        <td className="font-semibold text-white">{total.name}</td>
+                        <td>{total.size}</td>
+                        <td>{total.material}</td>
+                        <td>{total.unit}</td>
+                        <td className="font-bold text-brand">{formatNumber(total.quantity)}</td>
+                        <td>{formatDate(total.updatedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : null}
+      </div>
+
+      <div className="card p-5">
+        <h2 className="mb-4 text-lg font-bold text-white">{warehouseFilter ? "Stany wybranego magazynu" : "Rozbicie na magazyny"}</h2>
         {filtered.length === 0 ? (
           <EmptyState />
         ) : (
