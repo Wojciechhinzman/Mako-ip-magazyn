@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Toast } from "@/components/Toast";
 import { formatDate, formatNumber } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
-import { Item, ToastState } from "@/lib/types";
+import { Item, ItemStock, ToastState, Warehouse } from "@/lib/types";
 
 type EditState = {
   id: string;
@@ -19,19 +19,26 @@ type EditState = {
 
 export default function AssortmentPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [stocks, setStocks] = useState<ItemStock[]>([]);
   const [search, setSearch] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
-    const [{ data: itemData }, { data: adminData }] = await Promise.all([
+    const [{ data: itemData }, { data: warehouseData }, { data: stockData }, { data: adminData }] = await Promise.all([
       supabase.from("items").select("*").order("name"),
+      supabase.from("warehouses").select("*").eq("active", true).order("name"),
+      supabase.from("item_stocks").select("*, warehouses(*)").gt("quantity", 0),
       supabase.rpc("current_user_is_admin")
     ]);
 
     setItems(itemData || []);
+    setWarehouses(warehouseData || []);
+    setStocks((stockData as unknown as ItemStock[]) || []);
     setIsAdmin(Boolean(adminData));
   }
 
@@ -41,10 +48,26 @@ export default function AssortmentPage() {
 
   const filtered = useMemo(() => {
     const phrase = search.trim().toLowerCase();
-    if (!phrase) return items;
 
-    return items.filter((item) => `${item.name} ${item.size} ${item.material} ${item.unit}`.toLowerCase().includes(phrase));
-  }, [items, search]);
+    return items.filter((item) => {
+      const itemStocks = stocks.filter((stock) => stock.item_id === item.id && stock.quantity > 0);
+      const warehouseNames = itemStocks.map((stock) => stock.warehouses?.name || "").join(" ");
+      const text = `${item.name} ${item.size} ${item.material} ${item.unit} ${warehouseNames}`.toLowerCase();
+      const matchesSearch = !phrase || text.includes(phrase);
+      const matchesWarehouse = !warehouseFilter || itemStocks.some((stock) => stock.warehouse_id === warehouseFilter);
+
+      return matchesSearch && matchesWarehouse;
+    });
+  }, [items, search, stocks, warehouseFilter]);
+
+  function getWarehouseSummary(itemId: string) {
+    const itemStocks = stocks.filter((stock) => stock.item_id === itemId && stock.quantity > 0);
+    if (itemStocks.length === 0) return "-";
+
+    return itemStocks
+      .map((stock) => `${stock.warehouses?.name || "Magazyn"}: ${formatNumber(stock.quantity)}`)
+      .join(", ");
+  }
 
   function startEdit(item: Item) {
     setToast(null);
@@ -101,9 +124,19 @@ export default function AssortmentPage() {
       ) : null}
 
       <section className="card p-5">
-        <div className="mb-5 flex items-center gap-3">
-          <Search className="h-5 w-5 text-slate-400" />
-          <input className="input" placeholder="Szukaj po nazwie, rozmiarze, materiale lub jednostce" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_280px]">
+          <div className="flex items-center gap-3">
+            <Search className="h-5 w-5 text-slate-400" />
+            <input className="input" placeholder="Szukaj po nazwie, rozmiarze, materiale, jednostce lub magazynie" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </div>
+          <select className="input" value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)}>
+            <option value="">Wszystkie magazyny</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {filtered.length === 0 ? (
@@ -118,6 +151,7 @@ export default function AssortmentPage() {
                   <th>Material</th>
                   <th>Jednostka</th>
                   <th>Stan laczny</th>
+                  <th>Magazyny</th>
                   <th>Ostatnia zmiana</th>
                   <th>Akcja</th>
                 </tr>
@@ -141,6 +175,7 @@ export default function AssortmentPage() {
                         {active ? <input className="input" value={editing.unit} onChange={(event) => updateEditing({ unit: event.target.value })} /> : item.unit}
                       </td>
                       <td className="font-bold text-brand">{formatNumber(item.quantity)}</td>
+                      <td className="min-w-56 text-sm text-slate-300">{getWarehouseSummary(item.id)}</td>
                       <td>{formatDate(item.updated_at)}</td>
                       <td>
                         {active ? (
