@@ -1,109 +1,128 @@
 # MAKO-IP Magazyn
 
-Prosta aplikacja webowa do obsługi magazynu materiałów dla firmy instalacyjnej MAKO-IP. Interfejs jest po polsku, responsywny i działa w ciemnym motywie.
+Aplikacja magazynowa dla MAKO-IP w wersji instalowanej na Windows i Android.
 
-## Technologie
+Dane i logowanie działają przez Supabase, a sama aplikacja nie musi być hostowana na Netlify/Vercel. Instalator Windows i plik APK zawierają zbudowany frontend aplikacji.
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Supabase Auth
-- Supabase PostgreSQL
+## Jak działa ta wersja
 
-## Instalacja
+- Windows: aplikacja działa jako program desktopowy przez Electron.
+- Android: aplikacja działa jako APK przez Capacitor.
+- Baza danych: Supabase PostgreSQL.
+- Logowanie: Supabase Auth.
+- Dane są wspólne dla wszystkich urządzeń, jeśli używają tego samego projektu Supabase.
+- Do pracy z bazą i logowaniem wymagany jest internet.
 
-```bash
+## Wymagania
+
+- Node.js z npm.
+- Konto i projekt Supabase.
+- Android Studio, jeśli budujesz APK.
+- Git, jeśli chcesz wysyłać zmiany do GitHub.
+
+## Instalacja zależności
+
+W folderze projektu uruchom:
+
+```powershell
 npm install
+```
+
+Jeżeli PowerShell blokuje npm, użyj:
+
+```powershell
+npm.cmd install
 ```
 
 ## Konfiguracja Supabase
 
-1. Utwórz projekt w Supabase.
-2. Wejdź w `SQL Editor`.
-3. Wklej całą zawartość pliku `supabase/schema.sql`.
-4. Uruchom skrypt.
-5. Wejdź w `Authentication > Users` i dodaj użytkownika z e-mailem oraz hasłem.
+1. Wejdź do projektu Supabase.
+2. Otwórz `SQL Editor`.
+3. Wklej i uruchom SQL z pliku:
 
-## Zmienne środowiskowe
-
-Skopiuj plik `.env.example` do `.env.local`:
-
-```bash
-cp .env.example .env.local
+```text
+supabase/schema.sql
 ```
 
-Uzupełnij wartości z ustawień projektu Supabase:
+4. Jeżeli korzystasz z nowych funkcji magazynów i wydań wielopozycyjnych, uruchom też po kolei:
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://twoj-projekt.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=twoj-anon-key
+```text
+supabase/migration_issue_documents.sql
+supabase/migration_warehouses.sql
+supabase/migration_receive_normalize.sql
 ```
 
-## Uruchomienie lokalne
+5. Wejdź w `Authentication > Users`.
+6. Dodaj użytkownika z e-mailem i hasłem.
 
-```bash
+## Plik .env.local
+
+W głównym folderze projektu musi istnieć plik:
+
+```text
+.env.local
+```
+
+Przykład:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://fidacmwpxnjmvnrjjwgw.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxxxxxx
+```
+
+Adres Supabase znajdziesz w panelu projektu Supabase.
+
+Klucz znajdziesz tutaj:
+
+```text
+Project Settings > API Keys > Publishable key
+```
+
+Nie używaj `secret key` w aplikacji instalowanej.
+
+## Sprawdzenie konfiguracji
+
+Przed budową aplikacji możesz sprawdzić konfigurację:
+
+```powershell
+npm run check:env
+```
+
+Poprawny wynik:
+
+```text
+Konfiguracja Supabase OK.
+```
+
+## Uruchomienie lokalne w przeglądarce
+
+Do testów na komputerze:
+
+```powershell
 npm run dev
 ```
 
-Aplikacja będzie dostępna pod adresem:
+Otwórz:
 
-```bash
+```text
 http://localhost:3000
 ```
 
-## Wdrożenie na Vercel
+## Budowa aplikacji Windows
 
-1. Wypchnij projekt do repozytorium GitHub.
-2. W Vercel wybierz `Add New Project`.
-3. Podłącz repozytorium.
-4. Dodaj zmienne środowiskowe:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-5. Uruchom deployment.
+Zbuduj instalator:
 
-## Instalacja jako aplikacja na komputerze
-
-Po wdrożeniu na Vercel aplikacja działa jako PWA, czyli można ją zainstalować na komputerze z poziomu przeglądarki.
-
-W Google Chrome lub Microsoft Edge:
-
-1. Otwórz adres wdrożonej aplikacji.
-2. Zaloguj się.
-3. Kliknij ikonę instalacji w pasku adresu albo menu przeglądarki.
-4. Wybierz `Zainstaluj MAKO-IP Magazyn`.
-
-Po instalacji aplikacja uruchamia się z menu Start jak zwykły program. Do działania nadal potrzebuje internetu, bo dane i logowanie są w Supabase.
-
-## Instalator Windows
-
-Aplikację można też zbudować jako klasyczny instalator Windows przez Electron.
-
-Najpierw doinstaluj zależności desktopowe:
-
-```bash
-npm install
-```
-
-Jeśli Electron nie został jeszcze pobrany, uruchom:
-
-```bash
-npm install --save-dev electron electron-builder
-```
-
-Przed budową instalatora upewnij się, że plik `.env.local` ma poprawne dane Supabase, bo zostaną wpisane do zbudowanej aplikacji:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://twoj-projekt.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=twoj-publishable-key
-```
-
-Budowa instalatora:
-
-```bash
+```powershell
 npm run dist:win
 ```
 
-Gotowy instalator znajdziesz w folderze:
+Jeżeli PowerShell blokuje npm:
+
+```powershell
+npm.cmd run dist:win
+```
+
+Gotowy instalator będzie w folderze:
 
 ```text
 dist
@@ -115,61 +134,66 @@ Plik będzie miał nazwę podobną do:
 MAKO-IP Magazyn Setup 1.0.0.exe
 ```
 
-Ten plik można uruchomić na innym komputerze z Windows i zainstalować aplikację. Program nadal wymaga internetu, ponieważ baza danych i logowanie działają przez Supabase.
+Ten plik można przenieść na inny komputer z Windows i zainstalować.
 
-## Aplikacja Android APK
+## Budowa APK na Android
 
-Aplikację można przygotować jako plik `.apk` przez Capacitor. APK działa jako aplikacja Android z wbudowanym WebView i łączy się z Supabase przez internet.
+Jeżeli folder `android` już istnieje, użyj:
 
-Wymagania:
-
-- Node.js z npm
-- Android Studio
-- Android SDK
-- Java/JDK, najlepiej przez Android Studio
-
-Pierwsza konfiguracja:
-
-```bash
-npm install
-npm run android:add
-```
-
-Jeśli folder `android` już istnieje, nie uruchamiaj ponownie `android:add`; użyj synchronizacji:
-
-```bash
-npm run android:sync
-```
-
-Budowa pliku APK debug:
-
-```bash
+```powershell
 npm run android:apk
 ```
 
-Gotowy plik znajdziesz tutaj:
+Jeżeli PowerShell blokuje npm:
+
+```powershell
+npm.cmd run android:apk
+```
+
+Gotowy plik APK:
 
 ```text
 android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-Ten plik można przenieść na telefon z Androidem i zainstalować. Telefon może poprosić o zgodę na instalowanie aplikacji z nieznanych źródeł.
+Ten plik można przenieść na telefon i zainstalować.
 
-Wersja debug jest dobra do testów wewnętrznych. Do normalnej dystrybucji potrzebny jest podpisany APK albo AAB z własnym kluczem release.
+Wersja `debug` jest dobra do testów wewnętrznych. Do normalnej dystrybucji potrzebny jest podpisany build release.
+
+## Aktualizacje aplikacji
+
+Po zmianach w kodzie:
+
+1. Zbuduj nowy instalator Windows albo APK.
+2. Zainstaluj nową wersję na urządzeniu.
+
+Zmiany w bazie Supabase, takie jak dane magazynowe, pracownicy, projekty i historia, są widoczne od razu na wszystkich urządzeniach.
+
+Zmiany w interfejsie wymagają nowej wersji aplikacji.
 
 ## Moduły aplikacji
 
-- Panel startowy z kaflami modułów
+- Panel
 - Stany magazynowe
 - Przyjęcie na magazyn
 - Wydanie z magazynu
 - Przesunięcie między magazynami
-- Historia operacji
+- Historia
 - Magazyny
 - Pracownicy
 - Projekty
 - Ustawienia
 
-## Eksport Excel
+## Eksport
 
-Eksport do pliku `.xls` jest dostępny w widoku stanów magazynowych i historii operacji.
+Aplikacja eksportuje:
+
+- stany magazynowe do Excela,
+- historię operacji do Excela,
+- raport konkretnego wydania do Excela.
+
+## Ważne
+
+Ta wersja nie wymaga Netlify ani Vercel.
+
+Supabase nadal jest potrzebny, bo przechowuje dane i obsługuje logowanie.
