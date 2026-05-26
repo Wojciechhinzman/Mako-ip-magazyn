@@ -50,6 +50,7 @@ supabase/schema.sql
 supabase/migration_issue_documents.sql
 supabase/migration_warehouses.sql
 supabase/migration_receive_normalize.sql
+supabase/migration_item_admin_edit.sql
 ```
 
 5. Wejdź w `Authentication > Users`.
@@ -179,6 +180,7 @@ Zmiany w interfejsie wymagają nowej wersji aplikacji.
 - Wydanie z magazynu
 - Przesunięcie między magazynami
 - Historia
+- Asortyment
 - Magazyny
 - Pracownicy
 - Projekty

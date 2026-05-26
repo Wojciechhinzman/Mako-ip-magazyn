@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowRightLeft, FolderKanban, History, Package, PackageMinus, PackagePlus, Search, Settings, Users } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, FolderKanban, History, Package, PackageMinus, PackagePlus, PackageSearch, Search, Settings, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDate, formatNumber, currentMonthStartIso } from "@/lib/format";
@@ -40,6 +40,12 @@ const modules = [
     title: "Historia",
     description: "Przeglądaj operacje, filtruj i eksportuj dane.",
     icon: History
+  },
+  {
+    href: "/asortyment",
+    title: "Asortyment",
+    description: "Edytuj nazwy, rozmiary, materialy i jednostki.",
+    icon: PackageSearch
   },
   {
     href: "/pracownicy",

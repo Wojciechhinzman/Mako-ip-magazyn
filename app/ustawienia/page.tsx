@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FolderKanban, Package, Settings, ShieldCheck, Users } from "lucide-react";
+import { FolderKanban, Package, PackageSearch, Settings, ShieldCheck, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/lib/supabase";
 
 const actions = [
+  {
+    href: "/asortyment",
+    title: "Asortyment",
+    description: "Edycja nazw, rozmiarow, materialow i jednostek.",
+    icon: PackageSearch,
+    adminOnly: true
+  },
   {
     href: "/magazyny",
     title: "Magazyny",
