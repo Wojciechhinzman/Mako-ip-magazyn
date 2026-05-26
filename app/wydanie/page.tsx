@@ -7,7 +7,7 @@ import { Toast } from "@/components/Toast";
 import { formatNumber } from "@/lib/format";
 import { downloadIssueReport } from "@/lib/issueReport";
 import { supabase } from "@/lib/supabase";
-import { Employee, Item, Project, StockMovement, ToastState } from "@/lib/types";
+import { Employee, Item, ItemStock, Project, StockMovement, ToastState, Warehouse } from "@/lib/types";
 
 type IssueLine = {
   id: string;
@@ -25,21 +25,32 @@ export default function IssuePage() {
   const [items, setItems] = useState<Item[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouseId, setWarehouseId] = useState("");
   const [lines, setLines] = useState<IssueLine[]>([newLine()]);
   const [lastReportRows, setLastReportRows] = useState<StockMovement[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
   const [busy, setBusy] = useState(false);
 
-  async function loadData() {
-    const [itemResult, employeeResult, projectResult] = await Promise.all([
-      supabase.from("items").select("*").gt("quantity", 0).order("name"),
+  async function loadData(nextWarehouseId = warehouseId) {
+    const [stockResult, employeeResult, projectResult, warehouseResult] = await Promise.all([
+      nextWarehouseId
+        ? supabase.from("item_stocks").select("quantity, items(*)").eq("warehouse_id", nextWarehouseId).gt("quantity", 0)
+        : supabase.from("item_stocks").select("quantity, items(*)").gt("quantity", 0),
       supabase.from("employees").select("*").eq("active", true).order("full_name"),
-      supabase.from("projects").select("*").eq("active", true).order("name")
+      supabase.from("projects").select("*").eq("active", true).order("name"),
+      supabase.from("warehouses").select("*").eq("active", true).order("name")
     ]);
 
-    setItems(itemResult.data || []);
+    const stockRows = ((stockResult.data || []) as unknown as ItemStock[])
+      .map((row) => (row.items ? { ...row.items, quantity: row.quantity } : null))
+      .filter(Boolean) as Item[];
+
+    setItems(stockRows);
     setEmployees(employeeResult.data || []);
     setProjects(projectResult.data || []);
+    setWarehouses(warehouseResult.data || []);
+    if (!nextWarehouseId && warehouseResult.data?.[0]) setWarehouseId(warehouseResult.data[0].id);
   }
 
   useEffect(() => {
@@ -96,8 +107,8 @@ export default function IssuePage() {
     const projectId = String(form.get("project_id") || "");
     const comment = String(form.get("comment") || "");
 
-    if (!employeeId || !projectId) {
-      setToast({ type: "error", message: "Wybierz pracownika i projekt." });
+    if (!employeeId || !projectId || !warehouseId) {
+      setToast({ type: "error", message: "Wybierz pracownika, projekt i magazyn." });
       return;
     }
 
@@ -122,7 +133,8 @@ export default function IssuePage() {
       p_lines: lines.map((line) => ({ item_id: line.itemId, quantity: Number(line.quantity) })),
       p_employee_id: employeeId,
       p_project_id: projectId,
-      p_comment: comment
+      p_comment: comment,
+      p_warehouse_id: warehouseId
     });
 
     if (error) {
@@ -141,7 +153,7 @@ export default function IssuePage() {
     setLastReportRows((reportRows as StockMovement[]) || []);
     formElement.reset();
     setLines([newLine()]);
-    await loadData();
+    await loadData(warehouseId);
     setToast({ type: "success", message: "Wydanie zostało zapisane. Możesz pobrać raport tego wydania." });
   }
 
@@ -156,7 +168,32 @@ export default function IssuePage() {
       <section className="card p-5">
         <Toast toast={toast} />
         <form className="space-y-5" onSubmit={submit}>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor="warehouse_id">
+                Magazyn źródłowy
+              </label>
+              <select
+                className="input"
+                id="warehouse_id"
+                value={warehouseId}
+                onChange={(event) => {
+                  setWarehouseId(event.target.value);
+                  setLines([newLine()]);
+                  loadData(event.target.value);
+                }}
+                required
+              >
+                <option value="" disabled>
+                  Wybierz magazyn
+                </option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="label" htmlFor="employee_id">
                 Osoba pobierająca

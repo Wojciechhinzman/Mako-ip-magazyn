@@ -1,71 +1,49 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Download, Pencil, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
-import { Toast } from "@/components/Toast";
 import { downloadExcel } from "@/lib/excel";
 import { formatDate, formatNumber } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
-import { Item, ToastState } from "@/lib/types";
+import { ItemStock, Warehouse } from "@/lib/types";
 
 export default function StockPage() {
-  const [items, setItems] = useState<Item[]>([]);
+  const [stocks, setStocks] = useState<ItemStock[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouseFilter, setWarehouseFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<Item | null>(null);
-  const [toast, setToast] = useState<ToastState>(null);
 
-  async function loadItems() {
-    const { data } = await supabase.from("items").select("*").order("name");
-    setItems(data || []);
+  async function loadStocks() {
+    const [stockResult, warehouseResult] = await Promise.all([
+      supabase.from("item_stocks").select("*, items(*), warehouses(*)").order("warehouse_id"),
+      supabase.from("warehouses").select("*").eq("active", true).order("name")
+    ]);
+
+    setStocks((stockResult.data as unknown as ItemStock[]) || []);
+    setWarehouses(warehouseResult.data || []);
   }
 
   useEffect(() => {
-    loadItems();
+    loadStocks();
   }, []);
 
   const filtered = useMemo(() => {
     const phrase = search.toLowerCase();
-    return items.filter((item) => `${item.name} ${item.size} ${item.material}`.toLowerCase().includes(phrase));
-  }, [items, search]);
-
-  async function saveEdit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!editing) return;
-
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const quantity = Number(form.get("quantity"));
-    const payload = {
-      name: String(form.get("name") || "").trim(),
-      size: String(form.get("size") || "").trim(),
-      material: String(form.get("material") || "").trim(),
-      unit: String(form.get("unit") || "").trim(),
-      quantity
-    };
-
-    if (!payload.name || !payload.size || !payload.material || !payload.unit || quantity < 0) {
-      setToast({ type: "error", message: "Uzupełnij nazwę, rozmiar, materiał, jednostkę i podaj ilość nie mniejszą niż zero." });
-      return;
-    }
-
-    const { error } = await supabase.from("items").update(payload).eq("id", editing.id);
-    if (error) {
-      setToast({ type: "error", message: error.message });
-      return;
-    }
-
-    setToast({ type: "success", message: "Pozycja magazynowa została zaktualizowana." });
-    setEditing(null);
-    await loadItems();
-  }
+    return stocks.filter((stock) => {
+      const item = stock.items;
+      if (!item || stock.quantity <= 0) return false;
+      const text = `${item.name} ${item.size} ${item.material} ${stock.warehouses?.name || ""}`.toLowerCase();
+      return text.includes(phrase) && (!warehouseFilter || stock.warehouse_id === warehouseFilter);
+    });
+  }, [stocks, search, warehouseFilter]);
 
   return (
     <>
       <PageHeader
         title="Stany magazynowe"
-        description="Aktualna ilość materiałów na magazynie."
+        description="Aktualne ilości materiałów we wszystkich magazynach."
         actions={
           <button
             className="btn-secondary"
@@ -73,14 +51,14 @@ export default function StockPage() {
               downloadExcel(
                 "stany-magazynowe.xls",
                 "Stany magazynowe",
-                filtered.map((item) => ({
-                  "Nazwa artykułu": item.name,
-                  Rozmiar: item.size,
-                  Materiał: item.material,
-                  Jednostka: item.unit,
-                  "Ilość na stanie": item.quantity,
-                  "Data utworzenia": formatDate(item.created_at),
-                  "Ostatnia zmiana": formatDate(item.updated_at)
+                filtered.map((stock) => ({
+                  Magazyn: stock.warehouses?.name || "",
+                  "Nazwa artykułu": stock.items?.name || "",
+                  Rozmiar: stock.items?.size || "",
+                  Materiał: stock.items?.material || "",
+                  Jednostka: stock.items?.unit || "",
+                  "Ilość na stanie": stock.quantity,
+                  "Ostatnia zmiana": formatDate(stock.updated_at)
                 }))
               )
             }
@@ -91,9 +69,18 @@ export default function StockPage() {
           </button>
         }
       />
-      <Toast toast={toast} />
       <div className="card p-5">
-        <input className="input mb-5" placeholder="Szukaj po nazwie, rozmiarze lub materiale" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="mb-5 grid gap-3 md:grid-cols-[1fr_260px]">
+          <input className="input" placeholder="Szukaj po nazwie, rozmiarze, materiale lub magazynie" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <select className="input" value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)}>
+            <option value="">Wszystkie magazyny</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </select>
+        </div>
         {filtered.length === 0 ? (
           <EmptyState />
         ) : (
@@ -101,34 +88,25 @@ export default function StockPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>Magazyn</th>
                   <th>Nazwa artykułu</th>
                   <th>Rozmiar</th>
                   <th>Materiał</th>
                   <th>Jednostka</th>
                   <th>Ilość</th>
-                  <th>Utworzono</th>
                   <th>Ostatnia zmiana</th>
-                  <th>Akcja</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id}>
-                    <td className="font-mono text-xs text-slate-400">{item.id.slice(0, 8)}</td>
-                    <td className="font-semibold text-white">{item.name}</td>
-                    <td>{item.size}</td>
-                    <td>{item.material}</td>
-                    <td>{item.unit}</td>
-                    <td className="font-bold text-brand">{formatNumber(item.quantity)}</td>
-                    <td>{formatDate(item.created_at)}</td>
-                    <td>{formatDate(item.updated_at)}</td>
-                    <td>
-                      <button className="btn-secondary min-h-10 px-3 py-2" onClick={() => setEditing(item)}>
-                        <Pencil className="h-4 w-4" />
-                        Edytuj
-                      </button>
-                    </td>
+                {filtered.map((stock) => (
+                  <tr key={`${stock.item_id}-${stock.warehouse_id}`}>
+                    <td className="font-semibold text-white">{stock.warehouses?.name}</td>
+                    <td>{stock.items?.name}</td>
+                    <td>{stock.items?.size}</td>
+                    <td>{stock.items?.material}</td>
+                    <td>{stock.items?.unit}</td>
+                    <td className="font-bold text-brand">{formatNumber(stock.quantity)}</td>
+                    <td>{formatDate(stock.updated_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,49 +114,6 @@ export default function StockPage() {
           </div>
         )}
       </div>
-
-      {editing ? (
-        <div className="fixed inset-0 z-40 flex items-end bg-black/70 p-4 sm:items-center sm:justify-center">
-          <section className="w-full max-w-2xl rounded-lg border border-line bg-panel p-5 shadow-soft">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Edytuj pozycję</h2>
-                <p className="mt-1 text-sm text-slate-400">Zmień dane artykułu magazynowego.</p>
-              </div>
-              <button className="btn-secondary min-h-10 px-3 py-2" onClick={() => setEditing(null)} aria-label="Zamknij">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form className="grid gap-4 sm:grid-cols-2" onSubmit={saveEdit}>
-              <EditField label="Nazwa artykułu" name="name" defaultValue={editing.name} required />
-              <EditField label="Rozmiar" name="size" defaultValue={editing.size} required />
-              <EditField label="Materiał" name="material" defaultValue={editing.material} required />
-              <EditField label="Jednostka" name="unit" defaultValue={editing.unit} required />
-              <EditField label="Aktualna ilość" name="quantity" type="number" min="0" step="0.001" defaultValue={String(editing.quantity)} required />
-              <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row">
-                <button className="btn-primary flex-1" type="submit">
-                  Zapisz zmiany
-                </button>
-                <button className="btn-secondary flex-1" type="button" onClick={() => setEditing(null)}>
-                  Anuluj
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
     </>
-  );
-}
-
-function EditField(props: { label: string; name: string; type?: string; min?: string; step?: string; defaultValue: string; required?: boolean }) {
-  const { label, ...inputProps } = props;
-  return (
-    <div>
-      <label className="label" htmlFor={inputProps.name}>
-        {label}
-      </label>
-      <input className="input" id={inputProps.name} {...inputProps} />
-    </div>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { BarChart3, ClipboardList, FolderKanban, History, LogOut, Menu, Package, PackageMinus, PackagePlus, Settings, Users } from "lucide-react";
+import { ArrowRightLeft, BarChart3, ClipboardList, FolderKanban, History, LogOut, Menu, Package, PackageMinus, PackagePlus, Settings, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 
@@ -12,7 +12,9 @@ const links = [
   { href: "/stany", label: "Stany magazynowe", icon: Package },
   { href: "/przyjecie", label: "Przyjęcie", icon: PackagePlus },
   { href: "/wydanie", label: "Wydanie", icon: PackageMinus },
+  { href: "/przesuniecie", label: "Przesunięcie", icon: ArrowRightLeft },
   { href: "/historia", label: "Historia", icon: History },
+  { href: "/magazyny", label: "Magazyny", icon: Package },
   { href: "/pracownicy", label: "Pracownicy", icon: Users },
   { href: "/projekty", label: "Projekty", icon: FolderKanban },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings }

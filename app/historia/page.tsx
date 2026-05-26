@@ -20,7 +20,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("stock_movements").select("*, employees(full_name), projects(name, code), issue_documents(document_number)").order("created_at", { ascending: false }),
+      supabase.from("stock_movements").select("*, employees(full_name), projects(name, code), issue_documents(document_number), warehouses(name), to_warehouses:warehouses!stock_movements_to_warehouse_id_fkey(name)").order("created_at", { ascending: false }),
       supabase.from("items").select("*").order("name"),
       supabase.from("employees").select("*").order("full_name"),
       supabase.from("projects").select("*").order("name")
@@ -35,7 +35,7 @@ export default function HistoryPage() {
   const filtered = useMemo(() => {
     const phrase = filters.q.toLowerCase();
     return movements.filter((movement) => {
-      const text = `${movement.item_name} ${movement.size} ${movement.material} ${movement.employees?.full_name || ""} ${movement.projects?.name || ""} ${movement.comment || ""}`.toLowerCase();
+      const text = `${movement.item_name} ${movement.size} ${movement.material} ${movement.employees?.full_name || ""} ${movement.projects?.name || ""} ${movement.warehouses?.name || ""} ${movement.to_warehouses?.name || ""} ${movement.comment || ""}`.toLowerCase();
       const movementDate = movement.created_at.slice(0, 10);
       return (
         text.includes(phrase) &&
@@ -66,7 +66,7 @@ export default function HistoryPage() {
                 "historia-operacji.xls",
                 "Historia operacji",
                 filtered.map((movement) => ({
-                  Typ: movement.type === "in" ? "Przyjęcie" : "Wydanie",
+                  Typ: movement.type === "in" ? "Przyjęcie" : movement.type === "out" ? "Wydanie" : "Przesunięcie",
                   Artykuł: movement.item_name,
                   Rozmiar: movement.size,
                   Materiał: movement.material,
@@ -74,6 +74,8 @@ export default function HistoryPage() {
                   Jednostka: movement.unit,
                   Osoba: movement.employees?.full_name || "",
                   Projekt: movement.projects ? `${movement.projects.code} - ${movement.projects.name}` : "",
+                  Magazyn: movement.warehouses?.name || "",
+                  "Do magazynu": movement.to_warehouses?.name || "",
                   "Numer wydania": movement.issue_documents?.document_number || "",
                   Data: formatDate(movement.created_at),
                   Komentarz: movement.comment || ""
@@ -114,6 +116,7 @@ export default function HistoryPage() {
           <Select value={filters.type} onChange={(value) => update("type", value)} label="Każdy typ">
             <option value="in">Przyjęcie</option>
             <option value="out">Wydanie</option>
+            <option value="transfer">Przesunięcie</option>
           </Select>
           <input className="input" type="date" value={filters.from} onChange={(event) => update("from", event.target.value)} />
           <input className="input" type="date" value={filters.to} onChange={(event) => update("to", event.target.value)} />
@@ -139,7 +142,7 @@ export default function HistoryPage() {
               <tbody>
                 {filtered.map((movement) => (
                   <tr key={movement.id}>
-                    <td>{movement.type === "in" ? "Przyjęcie" : "Wydanie"}</td>
+                    <td>{movement.type === "in" ? "Przyjęcie" : movement.type === "out" ? "Wydanie" : "Przesunięcie"}</td>
                     <td>
                       <p className="font-semibold text-white">{movement.item_name}</p>
                       <p className="text-xs text-slate-400">
@@ -150,7 +153,15 @@ export default function HistoryPage() {
                       {formatNumber(movement.quantity)} {movement.unit}
                     </td>
                     <td>{movement.employees?.full_name}</td>
-                    <td>{movement.projects ? `${movement.projects.code} - ${movement.projects.name}` : "-"}</td>
+                    <td>
+                      {movement.projects ? `${movement.projects.code} - ${movement.projects.name}` : "-"}
+                      {movement.warehouses ? (
+                        <p className="text-xs text-slate-400">
+                          Magazyn: {movement.warehouses.name}
+                          {movement.to_warehouses ? ` -> ${movement.to_warehouses.name}` : ""}
+                        </p>
+                      ) : null}
+                    </td>
                     <td>{movement.issue_documents?.document_number || "-"}</td>
                     <td>{formatDate(movement.created_at)}</td>
                     <td>{movement.comment || "-"}</td>

@@ -163,7 +163,9 @@ Wersja debug jest dobra do testów wewnętrznych. Do normalnej dystrybucji potrz
 - Stany magazynowe
 - Przyjęcie na magazyn
 - Wydanie z magazynu
+- Przesunięcie między magazynami
 - Historia operacji
+- Magazyny
 - Pracownicy
 - Projekty
 - Ustawienia

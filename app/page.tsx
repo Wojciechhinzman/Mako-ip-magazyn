@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, FolderKanban, History, Package, PackageMinus, PackagePlus, Search, Settings, Users } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, FolderKanban, History, Package, PackageMinus, PackagePlus, Search, Settings, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDate, formatNumber, currentMonthStartIso } from "@/lib/format";
@@ -30,6 +30,12 @@ const modules = [
     icon: PackageMinus
   },
   {
+    href: "/przesuniecie",
+    title: "Przesunięcie",
+    description: "Przenieś materiały pomiędzy magazynami.",
+    icon: ArrowRightLeft
+  },
+  {
     href: "/historia",
     title: "Historia",
     description: "Przeglądaj operacje, filtruj i eksportuj dane.",
@@ -46,6 +52,12 @@ const modules = [
     title: "Projekty",
     description: "Utrzymuj listę projektów używaną przy wydaniach.",
     icon: FolderKanban
+  },
+  {
+    href: "/magazyny",
+    title: "Magazyny",
+    description: "Zarządzaj nazwami magazynów i aktywnością.",
+    icon: Package
   },
   {
     href: "/ustawienia",

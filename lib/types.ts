@@ -24,6 +24,22 @@ export type Project = {
   created_at: string;
 };
 
+export type Warehouse = {
+  id: string;
+  name: string;
+  active: boolean;
+  created_at: string;
+};
+
+export type ItemStock = {
+  item_id: string;
+  warehouse_id: string;
+  quantity: number;
+  updated_at: string;
+  items?: Item;
+  warehouses?: Warehouse;
+};
+
 export type StockMovement = {
   id: string;
   type: "in" | "out";
@@ -31,6 +47,8 @@ export type StockMovement = {
   employee_id: string;
   project_id: string | null;
   issue_document_id?: string | null;
+  warehouse_id?: string | null;
+  to_warehouse_id?: string | null;
   item_name: string;
   size: string;
   material: string;
@@ -42,6 +60,8 @@ export type StockMovement = {
   employees?: Employee;
   projects?: Project | null;
   issue_documents?: IssueDocument | null;
+  warehouses?: Warehouse | null;
+  to_warehouses?: Warehouse | null;
 };
 
 export type IssueDocument = {
